@@ -1,0 +1,1 @@
+{0: 'bariloche_flor_negra', 1: 'lancha_desaparecida_orcadas', 2: 'mendoza_avion_carga', 3: 'otro', 4: 'profesor_lago_viedma', 5: 'proyecto_aurora', 6: 'puerto_deseado_embarcacion', 7: 'radio_ushuaia_beagle', 8: 'ramirez_convoy_santacruz', 9: 'ruta_comercial_norte', 10: 'salvatierra_rio_gallegos'}
