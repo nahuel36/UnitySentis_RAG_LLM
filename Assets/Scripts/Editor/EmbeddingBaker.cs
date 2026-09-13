@@ -16,7 +16,7 @@ namespace ChatSystemWithSentis
         { 
             UnityEngine.Debug.Log("Starting embedding bake...");
             // Busca todos los assets de tipo KnowledgeEntry en cualquier subcarpeta
-            string[] guids = AssetDatabase.FindAssets("t:ChatSystemWithSentis.KnowledgeEntry", new[] { "Assets/IA/Sentis/Entries" });
+            string[] guids = AssetDatabase.FindAssets("t:ChatSystemWithSentis.KnowledgeEntry", new[] { "Assets/Entries" });
 
             entries = new KnowledgeEntry[guids.Length];
             for (int i = 0; i < guids.Length; i++)
@@ -24,7 +24,7 @@ namespace ChatSystemWithSentis
                 string path = AssetDatabase.GUIDToAssetPath(guids[i]);
                 entries[i] = AssetDatabase.LoadAssetAtPath<KnowledgeEntry>(path);
             }            
-            engine = AssetDatabase.LoadAssetAtPath<AdventureQueryEngine>("Assets/IA/Sentis/Engine.prefab");
+            engine = AssetDatabase.LoadAssetAtPath<AdventureQueryEngine>("Assets/Prefabs/Engine.prefab");
 
             EditorCoroutineUtility.StartCoroutine(BakeCoroutines(entries), engine);
         }
