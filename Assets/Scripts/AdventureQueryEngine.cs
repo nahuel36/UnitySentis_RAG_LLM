@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.InferenceEngine;
 using UnityEngine;
+using static UnityEngine.EventSystems.EventTrigger;
 
 namespace ChatSystemWithSentis
 {
@@ -15,25 +16,18 @@ namespace ChatSystemWithSentis
         [SerializeField] private TextAsset vocabFile;
 
         [SerializeField] private ModelAsset embeddingModel;
-        [SerializeField] private ModelAsset intentModel;
         [SerializeField] private KnowledgeEntry[] allEntries;
         [SerializeField] private GameProgressSO gameProgress;
 
         [Header("Tuning")]
-        [SerializeField] private float semanticWeight = 0.6f;
-        [SerializeField] private float intentWeight = 0.4f;
+        [SerializeField] private float questionWeight = 0.8f;
+        [SerializeField] private float responseWeight = 0.2f;
         [SerializeField] private float minimumScore = 0.55f;
 
         private Worker _embeddingWorker;
-        private Worker _intentWorker;
 
         public float[] lastEmbedding;
         public bool _embeddingReady;
-
-        private string _lastIntentLabel;
-        private float _lastIntentScore;
-        [SerializeField] private string[] _intentLabels;
-
 
         void Awake()
         {
@@ -46,8 +40,14 @@ namespace ChatSystemWithSentis
                 _tokenizer = new WordPieceTokenizer(vocabFile.text);
             if (_embeddingWorker == null)
                 _embeddingWorker = new Worker(ModelLoader.Load(embeddingModel), BackendType.CPU);
-            if (_intentWorker == null)
-                _intentWorker = new Worker(ModelLoader.Load(intentModel), BackendType.CPU);
+        }
+
+
+        class QuestionCompared
+        {
+            public KnowledgeEntry matchedEntry;
+            public float questionScore;
+            public float responseScore;
         }
 
         public IEnumerator QueryCoroutine(string userInput, System.Action<QueryResult> onComplete)
@@ -67,47 +67,65 @@ namespace ChatSystemWithSentis
             Debug.Log($"Suma del query embedding: {embSum}");
 
 
-            // 2. Clasificación de intención
-            yield return StartCoroutine(ClassifyIntentCoroutine(normalized));
-            string label = _lastIntentLabel;
-            float intentScore = _lastIntentScore;
-
-            Debug.Log($"Intent: {_lastIntentLabel} (score: {_lastIntentScore:F3})");
-
-            if (_lastIntentLabel == "otro")
-            {
-                _lastIntentLabel = null;
-                _lastIntentScore = 0f;
-            }
-
-            Debug.Log($"Intent: {_lastIntentLabel} (score: {_lastIntentScore:F3})");
-
-
             // 3. Buscar la mejor entrada
             KnowledgeEntry best = null;
             float bestScore = 0f;
+
+
+            List<QuestionCompared> questionsOrdered = new List<QuestionCompared>();
 
             foreach (var entry in allEntries)
             {
                 if (entry.chapterRequired > gameProgress.CurrentChapter)
                     continue;
 
-                float semantic = CosineSimilarity(queryEmbedding, entry.embeddingCache);
-                float intent = (entry.intentLabel == label) ? intentScore : 0f;
-                float combined = semantic * semanticWeight + intent * intentWeight;
+                float responseSimilarity =
+                    CosineSimilarity(
+                        queryEmbedding,
+                        entry.embeddingCache
+                    );
 
 
-                float cacheSum = 0f;
-                foreach (var v in entry.embeddingCache) cacheSum += Mathf.Abs(v);
-
-                Debug.Log($"[{entry.entryId}] cacheSum: {cacheSum:F3} | semantic: {semantic:F3} | intent: {intent:F3} | combined: {combined:F3}");
-
-                if (combined > bestScore)
+                foreach (var question in entry.questions)
                 {
-                    bestScore = combined;
-                    best = entry;
+                    float similarity =
+                        CosineSimilarity(
+                            queryEmbedding,
+                            question.embeddingCache
+                        );
+
+                    questionsOrdered.Add(new QuestionCompared
+                    {
+                        matchedEntry = entry,
+                        questionScore = similarity,
+                        responseScore = responseSimilarity
+                    });
                 }
+
+                /*
+
+                    float combined =
+                        bestQuestionSimilarity * questionWeight +
+                        responseSimilarity * responseWeight;
+
+                    float cacheSum = 0f;
+                    foreach (var v in entry.embeddingCache) cacheSum += Mathf.Abs(v);
+
+                    Debug.Log($"[{entry.entryId}] cacheSum: {cacheSum:F3} | question: {bestQuestionSimilarity:F3} | response: {responseSimilarity:F3} | combined: {combined:F3}");
+
+                    if (combined > bestScore)
+                    {
+                        bestScore = combined;
+                        best = entry;
+                    }
+                }
+                */
             }
+
+            questionsOrdered.Sort((a, b) => b.questionScore.CompareTo(a.questionScore));
+
+            bestScore = questionsOrdered.Count > 0 ? questionsOrdered[0].questionScore * questionWeight + questionsOrdered[0].responseScore * responseWeight : 0f;
+            best = questionsOrdered.Count > 0 ? questionsOrdered[0].matchedEntry : null;
 
             QueryResult result = (best == null || bestScore < minimumScore)
                 ? QueryResult.NoMatch()
@@ -155,76 +173,6 @@ namespace ChatSystemWithSentis
             }
             return dot / (Mathf.Sqrt(magA) * Mathf.Sqrt(magB) + 1e-8f);
         }
-
-
-
-        public IEnumerator ClassifyIntentCoroutine(string text)
-        {
-            _lastIntentLabel = null;
-            _lastIntentScore = 0f;
-
-            List<int> tokens = _tokenizer.Tokenize(text, maxLength: 128);
-            int seqLen = tokens.Count;
-
-            int[] inputIds = tokens.ToArray();
-            int[] attentionMask = new int[seqLen];
-            for (int i = 0; i < seqLen; i++)
-                attentionMask[i] = 1;
-
-            using var tInputIds = new Tensor<int>(new TensorShape(1, seqLen), inputIds);
-            using var tAttentionMask = new Tensor<int>(new TensorShape(1, seqLen), attentionMask);
-
-            _intentWorker.SetInput("input_ids", tInputIds);
-            _intentWorker.SetInput("attention_mask", tAttentionMask);
-            _intentWorker.Schedule();
-
-            // Shape de salida: (1, numClasses) — un logit por etiqueta
-            var output = _intentWorker.PeekOutput("logits") as Tensor<float>;
-            output.ReadbackRequest();
-            yield return new WaitUntil(() => output.IsReadbackRequestDone());
-
-            // Softmax manual para convertir logits en probabilidades
-            int numClasses = output.shape[1];
-            float[] probs = Softmax(output, numClasses);
-
-            // Buscar la clase con mayor probabilidad
-            int bestIndex = 0;
-            float bestProb = 0f;
-            for (int i = 0; i < numClasses; i++)
-            {
-                if (probs[i] > bestProb)
-                {
-                    bestProb = probs[i];
-                    bestIndex = i;
-                }
-            }
-
-            _lastIntentLabel = _intentLabels[bestIndex];
-            _lastIntentScore = bestProb;
-
-            output.Dispose();
-        }
-
-        private float[] Softmax(Tensor<float> logits, int numClasses)
-        {
-            float max = float.MinValue;
-            for (int i = 0; i < numClasses; i++)
-                if (logits[0, i] > max) max = logits[0, i];
-
-            float sum = 0f;
-            float[] result = new float[numClasses];
-            for (int i = 0; i < numClasses; i++)
-            {
-                result[i] = Mathf.Exp(logits[0, i] - max); // restar max para estabilidad numérica
-                sum += result[i];
-            }
-            for (int i = 0; i < numClasses; i++)
-                result[i] /= sum;
-
-            return result;
-        }
-
-
 
 
         public IEnumerator GetEmbeddingCoroutine(string text)
