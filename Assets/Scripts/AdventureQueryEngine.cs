@@ -47,10 +47,10 @@ namespace ChatSystemWithSentis
 
         public void Initialize()
         {
-            if (_tokenizer == null)
-                _tokenizer = new WordPieceTokenizer(vocabFile.text);
-            if (_embeddingWorker == null)
-                _embeddingWorker = new Worker(ModelLoader.Load(embeddingModel), BackendType.CPU);
+            //if (_tokenizer == null)
+              //  _tokenizer = new WordPieceTokenizer(vocabFile.text);
+           // if (_embeddingWorker == null)
+             //   _embeddingWorker = new Worker(ModelLoader.Load(embeddingModel), BackendType.CPU);
         }
 
 

@@ -45,8 +45,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AdventureQueryEngine
   vocabFile: {fileID: 4900000, guid: 78275a15b1a06c24281b12fd06b16bd4, type: 3}
-  embeddingModel: {fileID: 5022602860645237092, guid: e53fde5ea6619594ea19292063df0f5f, type: 3}
-  intentModel: {fileID: 5022602860645237092, guid: 92cb557de3f6ec24195e113252d202e4, type: 3}
+  embeddingModel: {fileID: 0}
   allEntries:
   - {fileID: 11400000, guid: e89e45fd607bff3449c8ea0e71c9ec96, type: 2}
   - {fileID: 11400000, guid: 94f0c678ce631e24b9f2974e1adb4e14, type: 2}
@@ -60,8 +59,8 @@ MonoBehaviour:
   - {fileID: 11400000, guid: 3bf74f978af75b94fa9db47e6cc7fc46, type: 2}
   gameProgress:
     CurrentChapter: 1
-  semanticWeight: 0.3
-  intentWeight: 0.7
+  questionWeight: 0.8
+  responseWeight: 0.2
   minimumScore: 0.55
   lastEmbedding:
   - -0.047623005
@@ -449,15 +448,3 @@ MonoBehaviour:
   - -0.0047475137
   - 0.018852936
   _embeddingReady: 1
-  _intentLabels:
-  - bariloche_flor_negra
-  - lancha_desaparecida_orcadas
-  - mendoza_avion_carga
-  - otro
-  - profesor_lago_viedma
-  - proyecto_aurora
-  - puerto_deseado_embarcacion
-  - radio_ushuaia_beagle
-  - ramirez_convoy_santacruz
-  - ruta_comercial_norte
-  - salvatierra_rio_gallegos
