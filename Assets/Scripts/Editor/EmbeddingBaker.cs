@@ -86,13 +86,13 @@ namespace ChatSystemWithSentis
         {
             foreach (var e in entries)
             {
-                yield return EditorCoroutineUtility.StartCoroutine(engine.GetEmbeddingCoroutine(e.responseText), engine);
+                yield return EditorCoroutineUtility.StartCoroutine(engine.GetEmbeddingFromApiCoroutine(e.responseText), engine);
                 e.embeddingCache = (float[])engine.lastEmbedding.Clone();
 
                 foreach (var question in e.questions)
                 {
                     yield return EditorCoroutineUtility.StartCoroutine(
-                        engine.GetEmbeddingCoroutine(question.text),
+                        engine.GetEmbeddingFromApiCoroutine(question.text),
                         engine
                     );
 

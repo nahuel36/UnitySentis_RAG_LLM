@@ -3,13 +3,24 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.InferenceEngine;
 using UnityEngine;
-using static UnityEngine.EventSystems.EventTrigger;
+using UnityEngine.Networking;
+using System.Text;
+
 
 namespace ChatSystemWithSentis
 {
+    [System.Serializable]
+    public class EmbeddingRequest
+    {
+        public string inputs;
+    }
+
+
     public class AdventureQueryEngine : MonoBehaviour
     {
 
+        [SerializeField]
+        private const string EmbeddingApiUrl = "https://withered-brook-0991.nahuel36gg.workers.dev";
         //generador de intent tardo 25 minutos
 
         private WordPieceTokenizer _tokenizer;
@@ -58,8 +69,39 @@ namespace ChatSystemWithSentis
             Debug.Log($"Input normalizado: '{normalized}'");
 
             // 1. Embedding de la pregunta
-            yield return StartCoroutine(GetEmbeddingCoroutine(normalized));
+            yield return StartCoroutine(GetEmbeddingFromApiCoroutine(normalized));
+
+            if (lastEmbedding == null)
+            {
+                Debug.LogError(
+                    "Embedding API failed."
+                );
+
+                onComplete?.Invoke(
+                    QueryResult.NoMatch()
+                );
+
+                yield break;
+            }
+
+            if (lastEmbedding.Length != 384)
+            {
+                Debug.LogError(
+                    $"Unexpected embedding size: " +
+                    $"{lastEmbedding.Length}. Expected 384."
+                );
+
+                onComplete?.Invoke(
+                    QueryResult.NoMatch()
+                );
+
+                yield break;
+            }
+
             float[] queryEmbedding = lastEmbedding;
+
+
+
 
             // Verificá que el embedding no sea todo zeros
             float embSum = 0f;
@@ -126,6 +168,10 @@ namespace ChatSystemWithSentis
 
             bestScore = questionsOrdered.Count > 0 ? questionsOrdered[0].questionScore * questionWeight + questionsOrdered[0].responseScore * responseWeight : 0f;
             best = questionsOrdered.Count > 0 ? questionsOrdered[0].matchedEntry : null;
+
+            Debug.Log("question score: " + questionsOrdered[0].questionScore);
+            Debug.Log("response score: " + questionsOrdered[0].responseScore);
+            Debug.Log("best score: " + bestScore);
 
             QueryResult result = (best == null || bestScore < minimumScore)
                 ? QueryResult.NoMatch()
@@ -274,6 +320,143 @@ namespace ChatSystemWithSentis
                 result[d] /= magnitude + 1e-8f;
 
             return result;
+        }
+
+
+
+
+        public IEnumerator GetEmbeddingFromApiCoroutine(
+    string text)
+        {
+            _embeddingReady = false;
+            lastEmbedding = null;
+
+            string normalized =
+                NormalizeText(text);
+
+            EmbeddingRequest requestData =
+                new EmbeddingRequest
+                {
+                    inputs = normalized
+                };
+
+            string json =
+                JsonUtility.ToJson(requestData);
+
+            byte[] bodyRaw =
+                Encoding.UTF8.GetBytes(json);
+
+            using UnityWebRequest request =
+                new UnityWebRequest(
+                    EmbeddingApiUrl,
+                    UnityWebRequest.kHttpVerbPOST
+                );
+
+            request.uploadHandler =
+                new UploadHandlerRaw(bodyRaw);
+
+            request.downloadHandler =
+                new DownloadHandlerBuffer();
+
+            request.SetRequestHeader(
+                "Content-Type",
+                "application/json"
+            );
+
+            yield return request.SendWebRequest();
+
+
+            if (
+                request.result !=
+                UnityWebRequest.Result.Success)
+            {
+                Debug.LogError(
+                    "Embedding API error: " +
+                    request.responseCode +
+                    "\n" +
+                    request.error +
+                    "\n" +
+                    request.downloadHandler.text
+                );
+
+                yield break;
+            }
+
+
+            string responseJson =
+                request.downloadHandler.text;
+
+            lastEmbedding =
+                ParseEmbedding(responseJson);
+
+
+            if (lastEmbedding == null)
+            {
+                Debug.LogError(
+                    "Could not parse embedding."
+                );
+
+                yield break;
+            }
+
+
+            Debug.Log(
+                $"Remote embedding dimensions: " +
+                $"{lastEmbedding.Length}"
+            );
+
+            _embeddingReady = true;
+        }
+        private float[] ParseEmbedding(string json)
+        {
+            json = json.Trim();
+
+            // Algunas respuestas pueden venir como [[...]]
+            if (json.StartsWith("[["))
+            {
+                json = json.Substring(1, json.Length - 2);
+            }
+
+            if (!json.StartsWith("[") ||
+                !json.EndsWith("]"))
+            {
+                Debug.LogError(
+                    "Unexpected embedding JSON: " + json
+                );
+
+                return null;
+            }
+
+            json =
+                json.Substring(
+                    1,
+                    json.Length - 2
+                );
+
+            string[] values =
+                json.Split(',');
+
+            float[] embedding =
+                new float[values.Length];
+
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (!float.TryParse(
+                    values[i],
+                    System.Globalization.NumberStyles.Float,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out embedding[i]))
+                {
+                    Debug.LogError(
+                        $"Could not parse embedding value {i}: " +
+                        values[i]
+                    );
+
+                    return null;
+                }
+            }
+
+            return embedding;
         }
     }
 }
