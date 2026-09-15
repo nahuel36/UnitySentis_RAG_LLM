@@ -10,6 +10,7 @@ namespace ChatSystemWithSentis
         [SerializeField] private TMPro.TextMeshProUGUI response;
         public void OnPlayerSubmit()
         {
+            response.text = "Pensando...";
             StartCoroutine(engine.QueryCoroutine(inputField.text, OnQueryComplete));
         }
 
@@ -17,7 +18,7 @@ namespace ChatSystemWithSentis
         {
             if (!result.HasMatch)
             {
-                response.text = "No necesito saber sobre eso ahora.";
+                response.text = "No tengo información al respecto.";
                 return;
             }
 
