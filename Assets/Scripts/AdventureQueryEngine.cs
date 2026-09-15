@@ -1,7 +1,6 @@
 // AdventureQueryEngine.cs
 using System.Collections;
 using System.Collections.Generic;
-using Unity.InferenceEngine;
 using UnityEngine;
 using UnityEngine.Networking;
 using System.Text;
@@ -24,9 +23,9 @@ namespace ChatSystemWithSentis
         //generador de intent tardo 25 minutos
 
         private WordPieceTokenizer _tokenizer;
-        [SerializeField] private TextAsset vocabFile;
+        // [SerializeField] private TextAsset vocabFile; // VOCABULARIO LOCAL
 
-        [SerializeField] private ModelAsset embeddingModel;
+        // [SerializeField] private ModelAsset embeddingModel; // MODELO LOCAL
         [SerializeField] private KnowledgeEntry[] allEntries;
         [SerializeField] private GameProgressSO gameProgress;
 
@@ -35,7 +34,7 @@ namespace ChatSystemWithSentis
         [SerializeField] private float responseWeight = 0.2f;
         [SerializeField] private float minimumScore = 0.55f;
 
-        private Worker _embeddingWorker;
+        // [SerializeField] private Worker _embeddingWorker; // WORKER PARA EL MODELO LOCAL
 
         public float[] lastEmbedding;
         public bool _embeddingReady;
@@ -47,10 +46,11 @@ namespace ChatSystemWithSentis
 
         public void Initialize()
         {
+            // ESTO SE USABA CON EL MODELO LOCAL, AHORA SE USA LA API DE EMBEDDINGS
             //if (_tokenizer == null)
-              //  _tokenizer = new WordPieceTokenizer(vocabFile.text);
-           // if (_embeddingWorker == null)
-             //   _embeddingWorker = new Worker(ModelLoader.Load(embeddingModel), BackendType.CPU);
+            //  _tokenizer = new WordPieceTokenizer(vocabFile.text);
+            // if (_embeddingWorker == null)
+            //   _embeddingWorker = new Worker(ModelLoader.Load(embeddingModel), BackendType.CPU);
         }
 
 
@@ -221,6 +221,10 @@ namespace ChatSystemWithSentis
         }
 
 
+
+        /* // ESTO ERA PARA EL MODELO LOCAL, YA NO SE USA 
+         * 
+         * 
         public IEnumerator GetEmbeddingCoroutine(string text)
         {
             Initialize();
@@ -322,7 +326,7 @@ namespace ChatSystemWithSentis
             return result;
         }
 
-
+        */
 
 
         public IEnumerator GetEmbeddingFromApiCoroutine(

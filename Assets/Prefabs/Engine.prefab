@@ -44,7 +44,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7705138406b76054aa6cefe7d1bea70e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::AdventureQueryEngine
-  vocabFile: {fileID: 4900000, guid: 78275a15b1a06c24281b12fd06b16bd4, type: 3}
+  vocabFile: {fileID: 0}
   embeddingModel: {fileID: 0}
   allEntries:
   - {fileID: 11400000, guid: e89e45fd607bff3449c8ea0e71c9ec96, type: 2}

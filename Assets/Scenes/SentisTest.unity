@@ -1708,6 +1708,10 @@ PrefabInstance:
     m_TransformParent: {fileID: 0}
     m_Modifications:
     - target: {fileID: 2676446133098993960, guid: ff3d413825d532448b3a59223335c15e, type: 3}
+      propertyPath: vocabFile
+      value: 
+      objectReference: {fileID: 0}
+    - target: {fileID: 2676446133098993960, guid: ff3d413825d532448b3a59223335c15e, type: 3}
       propertyPath: minimumScore
       value: 0.65
       objectReference: {fileID: 0}
